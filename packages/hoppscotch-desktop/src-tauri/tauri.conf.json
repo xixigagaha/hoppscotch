@@ -30,6 +30,25 @@
         "style-src": "'unsafe-inline' 'self' https://fonts.googleapis.com data: asset: *",
         "worker-src": "* 'self' data: 'unsafe-eval' blob:"
       }
+    },
+    "allowlist": {
+      "fs": {
+        "scope": ["$RESOURCE/*", "$RESOURCE/", "./*", "./", "$APP/*", "$APP/"],
+        "all": true,
+        "readFile": true,
+        "writeFile": true,
+        "readDir": true,
+        "createDir": true,
+        "removeDir": true,
+        "removeFile": true
+      },
+      "path": {
+        "all": true
+      },
+      "shell": {
+        "all": false,
+        "open": true
+      }
     }
   },
   "bundle": {
