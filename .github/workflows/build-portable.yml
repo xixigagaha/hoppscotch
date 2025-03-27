@@ -1,0 +1,65 @@
+name: Build Portable Hoppscotch Desktop
+
+on:
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  build-windows-portable:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      
+      - name: Install pnpm
+        run: npm install -g pnpm
+      
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          targets: x86_64-pc-windows-msvc
+      
+      - name: Install dependencies
+        run: pnpm install
+      
+      - name: Create cargo config
+        run: |
+          mkdir -p .cargo
+          echo '[target."cfg(target_os=\"windows\")"]' > .cargo/config.toml
+          echo 'rustflags = ["-C", "target-feature=+crt-static"]' >> .cargo/config.toml
+      
+      - name: Build Tauri App
+        run: |
+          cd packages/hoppscotch-desktop
+          pnpm tauri build
+      
+      - name: Prepare portable package
+        run: |
+          mkdir portable-app
+          copy packages\hoppscotch-desktop\src-tauri\target\release\hoppscotch-desktop.exe portable-app\
+          mkdir portable-app\resources
+          xcopy /E /I packages\hoppscotch-desktop\src-tauri\target\release\resources portable-app\resources\
+          
+          # 创建启动脚本
+          echo @echo off > portable-app\start.bat
+          echo reg query "HKLM\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}" ^>nul 2^>^&1 >> portable-app\start.bat
+          echo if %%ERRORLEVEL%% NEQ 0 ( >> portable-app\start.bat
+          echo   echo WebView2 runtime not found. Please install it from: https://developer.microsoft.com/en-us/microsoft-edge/webview2/ >> portable-app\start.bat
+          echo   pause >> portable-app\start.bat
+          echo   exit >> portable-app\start.bat
+          echo ) >> portable-app\start.bat
+          echo start hoppscotch-desktop.exe >> portable-app\start.bat
+      
+      - name: Create ZIP archive
+        run: |
+          Compress-Archive -Path portable-app\* -DestinationPath hoppscotch-portable-windows.zip
+      
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: hoppscotch-portable-windows
+          path: hoppscotch-portable-windows.zip
